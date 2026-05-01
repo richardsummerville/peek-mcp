@@ -3,7 +3,7 @@ import Foundation
 struct MCPServer {
     private let protocolVersion = "2025-06-18"
     private let serverName = "peek-mcp"
-    private let serverVersion = "0.1.0"
+    private let serverVersion = "0.2.0"
 
     func run() async {
         log("peek-mcp listening on stdio")
@@ -61,14 +61,18 @@ struct MCPServer {
                 return success(id: id, result: textResult(jsonText(displays)))
 
             case "capture_window":
-                guard let wid = (args["window_id"] as? Int).map(UInt32.init)
-                    ?? (args["window_id"] as? NSNumber)?.uint32Value
-                else {
-                    return error(id: id, code: -32602, message: "Missing window_id")
-                }
                 let hideCursor = (args["hide_cursor"] as? Bool) ?? true
-                let png = try await ScreenCapture.captureWindow(id: wid, hideCursor: hideCursor)
-                return success(id: id, result: imageResult(png))
+                let wid: UInt32? = (args["window_id"] as? Int).map(UInt32.init)
+                    ?? (args["window_id"] as? NSNumber)?.uint32Value
+                if let wid = wid {
+                    let png = try await ScreenCapture.captureWindow(id: wid, hideCursor: hideCursor)
+                    return success(id: id, result: imageResult(png))
+                }
+                if let appName = args["app_name"] as? String, !appName.isEmpty {
+                    let png = try await ScreenCapture.captureWindow(byApp: appName, hideCursor: hideCursor)
+                    return success(id: id, result: imageResult(png))
+                }
+                return error(id: id, code: -32602, message: "capture_window requires window_id or app_name")
 
             case "capture_display":
                 let did: UInt32? = (args["display_id"] as? Int).map(UInt32.init)
@@ -123,12 +127,12 @@ struct MCPServer {
             ],
             [
                 "name": "capture_window",
-                "description": "Capture a specific window by its ID (from list_windows). Returns the window content as a PNG image (no shadow, no surrounding desktop).",
+                "description": "Capture a specific window as a PNG (no shadow, no surrounding desktop). Pass either window_id (from list_windows) or app_name to capture the frontmost window for that app.",
                 "inputSchema": [
                     "type": "object",
-                    "required": ["window_id"],
                     "properties": [
                         "window_id": ["type": "integer", "description": "Window ID from list_windows."],
+                        "app_name": ["type": "string", "description": "App name (case-insensitive substring), e.g. \"SocialPrep\" or \"Safari\"."],
                         "hide_cursor": ["type": "boolean", "description": "Default true."]
                     ]
                 ]

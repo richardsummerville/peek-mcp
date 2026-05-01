@@ -37,6 +37,7 @@ struct Bounds: Codable {
 
 enum CaptureError: LocalizedError {
     case windowNotFound(UInt32)
+    case windowNotFoundByApp(String)
     case displayNotFound
     case noDisplays
     case invalidRegion
@@ -45,6 +46,7 @@ enum CaptureError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .windowNotFound(let id): return "Window not found: \(id)"
+        case .windowNotFoundByApp(let app): return "No on-screen window found for app: \(app)"
         case .displayNotFound: return "Display not found"
         case .noDisplays: return "No displays available"
         case .invalidRegion: return "Region must have positive width and height"
@@ -83,6 +85,23 @@ enum ScreenCapture {
                 scale: scaleFactor(for: d.displayID)
             )
         }
+    }
+
+    static func findWindow(byApp appName: String) async throws -> WindowInfo? {
+        let needle = appName.lowercased()
+        let windows = try await listWindows(includeOffscreen: false)
+        let matches = windows.filter { $0.app.lowercased().contains(needle) }
+        // Prefer normal app windows (layer 0) with a non-empty title.
+        return matches.first(where: { $0.layer == 0 && !$0.title.isEmpty })
+            ?? matches.first(where: { $0.layer == 0 })
+            ?? matches.first
+    }
+
+    static func captureWindow(byApp appName: String, hideCursor: Bool = true) async throws -> Data {
+        guard let window = try await findWindow(byApp: appName) else {
+            throw CaptureError.windowNotFoundByApp(appName)
+        }
+        return try await captureWindow(id: window.id, hideCursor: hideCursor)
     }
 
     static func captureWindow(id: UInt32, hideCursor: Bool = true) async throws -> Data {

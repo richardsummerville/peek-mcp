@@ -18,16 +18,30 @@ struct Capture: AsyncParsableCommand {
     struct Window: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
             commandName: "window",
-            abstract: "Capture a specific window by ID."
+            abstract: "Capture a specific window by ID or app name."
         )
 
         @Option(name: [.short, .customLong("id")], help: "Window ID (from `peek list windows`).")
-        var windowID: UInt32
+        var windowID: UInt32?
+
+        @Option(name: [.short, .customLong("app")], help: "App name (case-insensitive substring). Picks the frontmost matching window.")
+        var app: String?
 
         @OptionGroup var common: CommonOptions
 
+        func validate() throws {
+            if windowID == nil && (app == nil || app?.isEmpty == true) {
+                throw ValidationError("Provide --id <window-id> or --app <name>.")
+            }
+        }
+
         func run() async throws {
-            let png = try await ScreenCapture.captureWindow(id: windowID, hideCursor: common.hideCursor)
+            let png: Data
+            if let wid = windowID {
+                png = try await ScreenCapture.captureWindow(id: wid, hideCursor: common.hideCursor)
+            } else {
+                png = try await ScreenCapture.captureWindow(byApp: app!, hideCursor: common.hideCursor)
+            }
             try writeOutput(png, path: common.output)
         }
     }
