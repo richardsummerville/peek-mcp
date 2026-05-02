@@ -148,6 +148,9 @@ enum ScreenCapture {
             AuditLog.record(AuditEntry(
                 kind: "denied", caller: caller, app: info.app, windowId: id, denyReason: reason
             ))
+            MenuBarController.record(CaptureRecord(
+                ts: Date(), kind: "capture_window", app: info.app, bytes: nil, denied: true
+            ))
             throw DenyError.denied(target: info.app, reason: reason)
         }
         let filter = SCContentFilter(desktopIndependentWindow: window)
@@ -166,6 +169,9 @@ enum ScreenCapture {
         let data = try pngData(from: image)
         AuditLog.record(AuditEntry(
             kind: "capture_window", caller: caller, app: info.app, windowId: id, bytes: data.count
+        ))
+        MenuBarController.record(CaptureRecord(
+            ts: Date(), kind: "capture_window", app: info.app, bytes: data.count, denied: false
         ))
         return data
     }
@@ -195,6 +201,9 @@ enum ScreenCapture {
         let data = try pngData(from: image)
         AuditLog.record(AuditEntry(
             kind: "capture_display", caller: caller, displayId: display.displayID, bytes: data.count
+        ))
+        MenuBarController.record(CaptureRecord(
+            ts: Date(), kind: "capture_display", app: nil, bytes: data.count, denied: false
         ))
         return data
     }
@@ -239,6 +248,9 @@ enum ScreenCapture {
             displayId: display.displayID,
             region: Bounds(CGRect(x: x, y: y, width: width, height: height)),
             bytes: data.count
+        ))
+        MenuBarController.record(CaptureRecord(
+            ts: Date(), kind: "capture_region", app: nil, bytes: data.count, denied: false
         ))
         return data
     }
