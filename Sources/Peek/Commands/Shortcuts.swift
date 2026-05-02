@@ -46,7 +46,7 @@ struct WindowShortcut: AsyncParsableCommand {
     @Argument(help: "App name (case-insensitive substring). Picks the frontmost matching window.")
     var app: String
 
-    @Option(name: .shortAndLong, help: "Output PNG path. If omitted, writes bytes to stdout.")
+    @Option(name: .shortAndLong, help: "Output PNG path. If omitted, writes bytes to stdout (or opens in Preview with --show).")
     var output: String?
 
     @Flag(name: .long, inversion: .prefixedNo, help: "Hide the mouse cursor (default: hide).")
@@ -55,11 +55,14 @@ struct WindowShortcut: AsyncParsableCommand {
     @Flag(name: .long, help: "Bypass the deny-list (sensitive apps refuse capture by default).")
     var force: Bool = false
 
+    @Flag(name: .long, help: "Open the capture in Preview after writing.")
+    var show: Bool = false
+
     func run() async throws {
         let result = try await ScreenCapture.captureWindow(
             byApp: app, hideCursor: hideCursor, caller: .cli, force: force
         )
-        try writeShortcutOutput(result.data, path: output)
+        try writeOutput(result.data, path: output, show: show)
     }
 }
 
@@ -72,26 +75,19 @@ struct DisplayShortcut: AsyncParsableCommand {
     @Option(name: [.short, .customLong("id")], help: "Display ID. Defaults to primary.")
     var displayID: UInt32?
 
-    @Option(name: .shortAndLong, help: "Output PNG path. If omitted, writes bytes to stdout.")
+    @Option(name: .shortAndLong, help: "Output PNG path. If omitted, writes bytes to stdout (or opens in Preview with --show).")
     var output: String?
 
     @Flag(name: .long, inversion: .prefixedNo, help: "Hide the mouse cursor (default: hide).")
     var hideCursor: Bool = true
 
+    @Flag(name: .long, help: "Open the capture in Preview after writing.")
+    var show: Bool = false
+
     func run() async throws {
         let result = try await ScreenCapture.captureDisplay(
             id: displayID, hideCursor: hideCursor, caller: .cli
         )
-        try writeShortcutOutput(result.data, path: output)
-    }
-}
-
-private func writeShortcutOutput(_ data: Data, path: String?) throws {
-    if let path = path {
-        let url = URL(fileURLWithPath: (path as NSString).expandingTildeInPath)
-        try data.write(to: url)
-        FileHandle.standardError.write("Wrote \(data.count) bytes to \(url.path)\n".data(using: .utf8)!)
-    } else {
-        FileHandle.standardOutput.write(data)
+        try writeOutput(result.data, path: output, show: show)
     }
 }

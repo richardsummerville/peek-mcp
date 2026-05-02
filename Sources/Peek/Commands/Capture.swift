@@ -8,11 +8,14 @@ struct Capture: AsyncParsableCommand {
     )
 
     struct CommonOptions: ParsableArguments {
-        @Option(name: .shortAndLong, help: "Output PNG path. If omitted, writes PNG bytes to stdout.")
+        @Option(name: .shortAndLong, help: "Output PNG path. If omitted, writes PNG bytes to stdout (or opens in Preview with --show).")
         var output: String?
 
         @Flag(name: .long, inversion: .prefixedNo, help: "Hide the mouse cursor in the capture (default: hide).")
         var hideCursor: Bool = true
+
+        @Flag(name: .long, help: "Open the capture in Preview after writing. Combine with --output to keep the file; without --output, writes to a tempfile and opens it.")
+        var show: Bool = false
     }
 
     struct Window: AsyncParsableCommand {
@@ -49,7 +52,7 @@ struct Capture: AsyncParsableCommand {
                     byApp: app!, hideCursor: common.hideCursor, caller: .cli, force: force
                 )
             }
-            try writeOutput(result.data, path: common.output)
+            try writeOutput(result.data, path: common.output, show: common.show)
         }
     }
 
@@ -68,7 +71,7 @@ struct Capture: AsyncParsableCommand {
             let result = try await ScreenCapture.captureDisplay(
                 id: displayID, hideCursor: common.hideCursor, caller: .cli
             )
-            try writeOutput(result.data, path: common.output)
+            try writeOutput(result.data, path: common.output, show: common.show)
         }
     }
 
@@ -95,17 +98,33 @@ struct Capture: AsyncParsableCommand {
                 hideCursor: common.hideCursor,
                 caller: .cli
             )
-            try writeOutput(result.data, path: common.output)
+            try writeOutput(result.data, path: common.output, show: common.show)
         }
     }
 }
 
-private func writeOutput(_ png: Data, path: String?) throws {
+func writeOutput(_ png: Data, path: String?, show: Bool) throws {
+    let resolvedPath: String?
     if let path = path {
         let url = URL(fileURLWithPath: (path as NSString).expandingTildeInPath)
         try png.write(to: url)
         FileHandle.standardError.write("Wrote \(png.count) bytes to \(url.path)\n".data(using: .utf8)!)
+        resolvedPath = url.path
+    } else if show {
+        let tmp = (NSTemporaryDirectory() as NSString)
+            .appendingPathComponent("peek-\(Int(Date().timeIntervalSince1970)).png")
+        let url = URL(fileURLWithPath: tmp)
+        try png.write(to: url)
+        FileHandle.standardError.write("Wrote \(png.count) bytes to \(url.path)\n".data(using: .utf8)!)
+        resolvedPath = url.path
     } else {
         FileHandle.standardOutput.write(png)
+        resolvedPath = nil
+    }
+    if show, let p = resolvedPath {
+        let proc = Process()
+        proc.launchPath = "/usr/bin/open"
+        proc.arguments = [p]
+        try proc.run()
     }
 }

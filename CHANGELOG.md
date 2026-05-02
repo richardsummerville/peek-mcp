@@ -5,6 +5,15 @@ All notable changes to peek are tracked here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.4.6] — 2026-05-02
+
+### Added
+- `--show` flag on all CLI capture commands (`peek capture window`,
+  `peek capture display`, `peek capture region`, and the `peek window` /
+  `peek display` shortcuts). When set, the capture is written to a
+  tempfile (or to `--output` if also given) and opened in Preview.
+  Saves typing `--output /tmp/x.png && open /tmp/x.png`.
+
 ## [0.4.5] — 2026-05-02
 
 ### Added
