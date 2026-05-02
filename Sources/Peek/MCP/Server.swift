@@ -3,7 +3,7 @@ import Foundation
 struct MCPServer {
     private let protocolVersion = "2025-06-18"
     private let serverName = "peek-mcp"
-    private let serverVersion = "0.2.1"
+    private let serverVersion = "0.3.0"
 
     func run() async {
         log("peek-mcp listening on stdio")
@@ -62,14 +62,19 @@ struct MCPServer {
 
             case "capture_window":
                 let hideCursor = (args["hide_cursor"] as? Bool) ?? true
+                let force = (args["force"] as? Bool) ?? false
                 let wid: UInt32? = (args["window_id"] as? Int).map(UInt32.init)
                     ?? (args["window_id"] as? NSNumber)?.uint32Value
                 if let wid = wid {
-                    let png = try await ScreenCapture.captureWindow(id: wid, hideCursor: hideCursor)
+                    let png = try await ScreenCapture.captureWindow(
+                        id: wid, hideCursor: hideCursor, caller: .mcp, force: force
+                    )
                     return success(id: id, result: imageResult(png))
                 }
                 if let appName = args["app_name"] as? String, !appName.isEmpty {
-                    let png = try await ScreenCapture.captureWindow(byApp: appName, hideCursor: hideCursor)
+                    let png = try await ScreenCapture.captureWindow(
+                        byApp: appName, hideCursor: hideCursor, caller: .mcp, force: force
+                    )
                     return success(id: id, result: imageResult(png))
                 }
                 return error(id: id, code: -32602, message: "capture_window requires window_id or app_name")
@@ -78,7 +83,9 @@ struct MCPServer {
                 let did: UInt32? = (args["display_id"] as? Int).map(UInt32.init)
                     ?? (args["display_id"] as? NSNumber)?.uint32Value
                 let hideCursor = (args["hide_cursor"] as? Bool) ?? true
-                let png = try await ScreenCapture.captureDisplay(id: did, hideCursor: hideCursor)
+                let png = try await ScreenCapture.captureDisplay(
+                    id: did, hideCursor: hideCursor, caller: .mcp
+                )
                 return success(id: id, result: imageResult(png))
 
             case "capture_region":
@@ -90,7 +97,7 @@ struct MCPServer {
                 let hideCursor = (args["hide_cursor"] as? Bool) ?? true
                 let png = try await ScreenCapture.captureRegion(
                     x: x, y: y, width: w, height: h,
-                    displayID: did, hideCursor: hideCursor
+                    displayID: did, hideCursor: hideCursor, caller: .mcp
                 )
                 return success(id: id, result: imageResult(png))
 
@@ -127,13 +134,14 @@ struct MCPServer {
             ],
             [
                 "name": "capture_window",
-                "description": "Capture a specific window as a PNG (no shadow, no surrounding desktop). Pass either window_id (from list_windows) or app_name to capture the frontmost window for that app.",
+                "description": "Capture a specific window as a PNG (no shadow, no surrounding desktop). Pass either window_id (from list_windows) or app_name to capture the frontmost window for that app. Sensitive apps (1Password, Keychain Access, etc.) are denied by default — pass force: true to override.",
                 "inputSchema": [
                     "type": "object",
                     "properties": [
                         "window_id": ["type": "integer", "description": "Window ID from list_windows."],
                         "app_name": ["type": "string", "description": "App name (case-insensitive substring), e.g. \"SocialPrep\" or \"Safari\"."],
-                        "hide_cursor": ["type": "boolean", "description": "Default true."]
+                        "hide_cursor": ["type": "boolean", "description": "Default true."],
+                        "force": ["type": "boolean", "description": "Bypass the deny-list. Default false."]
                     ]
                 ]
             ],

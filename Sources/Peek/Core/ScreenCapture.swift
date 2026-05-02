@@ -109,14 +109,24 @@ enum ScreenCapture {
             ?? matches.first
     }
 
-    static func captureWindow(byApp appName: String, hideCursor: Bool = true) async throws -> Data {
+    static func captureWindow(
+        byApp appName: String,
+        hideCursor: Bool = true,
+        caller: Caller,
+        force: Bool = false
+    ) async throws -> Data {
         guard let window = try await findWindow(byApp: appName) else {
             throw CaptureError.windowNotFoundByApp(appName)
         }
-        return try await captureWindow(id: window.id, hideCursor: hideCursor)
+        return try await captureWindow(id: window.id, hideCursor: hideCursor, caller: caller, force: force)
     }
 
-    static func captureWindow(id: UInt32, hideCursor: Bool = true) async throws -> Data {
+    static func captureWindow(
+        id: UInt32,
+        hideCursor: Bool = true,
+        caller: Caller,
+        force: Bool = false
+    ) async throws -> Data {
         await bootstrap()
         let content = try await SCShareableContent.excludingDesktopWindows(
             false,
@@ -124,6 +134,21 @@ enum ScreenCapture {
         )
         guard let window = content.windows.first(where: { $0.windowID == id }) else {
             throw CaptureError.windowNotFound(id)
+        }
+        let info = WindowInfo(
+            id: window.windowID,
+            title: window.title ?? "",
+            app: window.owningApplication?.applicationName ?? "Unknown",
+            bundleID: window.owningApplication?.bundleIdentifier,
+            bounds: Bounds(window.frame),
+            onScreen: window.isOnScreen,
+            layer: window.windowLayer
+        )
+        if !force, let reason = DenyList.current().denies(window: info) {
+            AuditLog.record(AuditEntry(
+                kind: "denied", caller: caller, app: info.app, windowId: id, denyReason: reason
+            ))
+            throw DenyError.denied(target: info.app, reason: reason)
         }
         let filter = SCContentFilter(desktopIndependentWindow: window)
         let scale = scaleForWindow(window) ?? 2.0
@@ -138,10 +163,14 @@ enum ScreenCapture {
             contentFilter: filter,
             configuration: cfg
         )
-        return try pngData(from: image)
+        let data = try pngData(from: image)
+        AuditLog.record(AuditEntry(
+            kind: "capture_window", caller: caller, app: info.app, windowId: id, bytes: data.count
+        ))
+        return data
     }
 
-    static func captureDisplay(id: UInt32?, hideCursor: Bool = true) async throws -> Data {
+    static func captureDisplay(id: UInt32?, hideCursor: Bool = true, caller: Caller) async throws -> Data {
         await bootstrap()
         let content = try await SCShareableContent.current
         guard !content.displays.isEmpty else { throw CaptureError.noDisplays }
@@ -163,7 +192,11 @@ enum ScreenCapture {
             contentFilter: filter,
             configuration: cfg
         )
-        return try pngData(from: image)
+        let data = try pngData(from: image)
+        AuditLog.record(AuditEntry(
+            kind: "capture_display", caller: caller, displayId: display.displayID, bytes: data.count
+        ))
+        return data
     }
 
     static func captureRegion(
@@ -172,7 +205,8 @@ enum ScreenCapture {
         width: Int,
         height: Int,
         displayID: UInt32? = nil,
-        hideCursor: Bool = true
+        hideCursor: Bool = true,
+        caller: Caller
     ) async throws -> Data {
         await bootstrap()
         guard width > 0, height > 0 else { throw CaptureError.invalidRegion }
@@ -198,7 +232,15 @@ enum ScreenCapture {
             contentFilter: filter,
             configuration: cfg
         )
-        return try pngData(from: image)
+        let data = try pngData(from: image)
+        AuditLog.record(AuditEntry(
+            kind: "capture_region",
+            caller: caller,
+            displayId: display.displayID,
+            region: Bounds(CGRect(x: x, y: y, width: width, height: height)),
+            bytes: data.count
+        ))
+        return data
     }
 
     private static func pngData(from cgImage: CGImage) throws -> Data {

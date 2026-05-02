@@ -29,6 +29,9 @@ struct Capture: AsyncParsableCommand {
 
         @OptionGroup var common: CommonOptions
 
+        @Flag(name: .long, help: "Bypass the deny-list (1Password, Keychain, etc.).")
+        var force: Bool = false
+
         func validate() throws {
             if windowID == nil && (app == nil || app?.isEmpty == true) {
                 throw ValidationError("Provide --id <window-id> or --app <name>.")
@@ -38,9 +41,13 @@ struct Capture: AsyncParsableCommand {
         func run() async throws {
             let png: Data
             if let wid = windowID {
-                png = try await ScreenCapture.captureWindow(id: wid, hideCursor: common.hideCursor)
+                png = try await ScreenCapture.captureWindow(
+                    id: wid, hideCursor: common.hideCursor, caller: .cli, force: force
+                )
             } else {
-                png = try await ScreenCapture.captureWindow(byApp: app!, hideCursor: common.hideCursor)
+                png = try await ScreenCapture.captureWindow(
+                    byApp: app!, hideCursor: common.hideCursor, caller: .cli, force: force
+                )
             }
             try writeOutput(png, path: common.output)
         }
@@ -58,7 +65,9 @@ struct Capture: AsyncParsableCommand {
         @OptionGroup var common: CommonOptions
 
         func run() async throws {
-            let png = try await ScreenCapture.captureDisplay(id: displayID, hideCursor: common.hideCursor)
+            let png = try await ScreenCapture.captureDisplay(
+                id: displayID, hideCursor: common.hideCursor, caller: .cli
+            )
             try writeOutput(png, path: common.output)
         }
     }
@@ -83,7 +92,8 @@ struct Capture: AsyncParsableCommand {
             let png = try await ScreenCapture.captureRegion(
                 x: x, y: y, width: width, height: height,
                 displayID: displayID,
-                hideCursor: common.hideCursor
+                hideCursor: common.hideCursor,
+                caller: .cli
             )
             try writeOutput(png, path: common.output)
         }
