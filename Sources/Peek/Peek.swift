@@ -5,7 +5,7 @@ struct Peek: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "peek",
         abstract: "macOS screen capture for humans and Claude (MCP).",
-        version: "0.2.0",
+        version: "0.2.1",
         subcommands: [List.self, Capture.self, Serve.self, Install.self, Doctor.self]
     )
 }

@@ -56,7 +56,18 @@ enum CaptureError: LocalizedError {
 }
 
 enum ScreenCapture {
+    /// Bootstraps the AppKit/CoreGraphics connection to the WindowServer.
+    /// Required for SCScreenshotManager.captureImage when running as a
+    /// pure CLI binary — without this, captures abort with
+    /// `CGS_REQUIRE_INIT` (CGInitialization.c). NSApplication.shared is
+    /// MainActor-isolated, so we hop briefly. The shared singleton is
+    /// cached after first access; subsequent calls are effectively free.
+    private static func bootstrap() async {
+        await MainActor.run { _ = NSApplication.shared }
+    }
+
     static func listWindows(includeOffscreen: Bool = false) async throws -> [WindowInfo] {
+        await bootstrap()
         let content = try await SCShareableContent.excludingDesktopWindows(
             false,
             onScreenWindowsOnly: !includeOffscreen
@@ -75,6 +86,7 @@ enum ScreenCapture {
     }
 
     static func listDisplays() async throws -> [DisplayInfo] {
+        await bootstrap()
         let content = try await SCShareableContent.current
         return content.displays.map { d in
             DisplayInfo(
@@ -105,6 +117,7 @@ enum ScreenCapture {
     }
 
     static func captureWindow(id: UInt32, hideCursor: Bool = true) async throws -> Data {
+        await bootstrap()
         let content = try await SCShareableContent.excludingDesktopWindows(
             false,
             onScreenWindowsOnly: false
@@ -129,6 +142,7 @@ enum ScreenCapture {
     }
 
     static func captureDisplay(id: UInt32?, hideCursor: Bool = true) async throws -> Data {
+        await bootstrap()
         let content = try await SCShareableContent.current
         guard !content.displays.isEmpty else { throw CaptureError.noDisplays }
         let display: SCDisplay
@@ -160,6 +174,7 @@ enum ScreenCapture {
         displayID: UInt32? = nil,
         hideCursor: Bool = true
     ) async throws -> Data {
+        await bootstrap()
         guard width > 0, height > 0 else { throw CaptureError.invalidRegion }
         let content = try await SCShareableContent.current
         guard !content.displays.isEmpty else { throw CaptureError.noDisplays }
