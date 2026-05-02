@@ -54,8 +54,11 @@ struct Serve: ParsableCommand {
         queueIn.async {
             defer { group.leave() }
             pump(from: STDIN_FILENO, to: socketFD)
-            // stdin EOF — break the other pump by shutting down the socket.
-            shutdown(socketFD, SHUT_RDWR)
+            // stdin EOF — half-close so daemon sees EOF and stops
+            // reading, but its already-queued responses still flow
+            // back through our read direction. SHUT_RDWR would race
+            // and drop pending responses.
+            shutdown(socketFD, SHUT_WR)
         }
 
         group.enter()
