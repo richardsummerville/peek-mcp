@@ -6,6 +6,6 @@ struct Peek: AsyncParsableCommand {
         commandName: "peek",
         abstract: "macOS screen capture for humans and Claude (MCP).",
         version: "0.3.0",
-        subcommands: [List.self, Capture.self, Serve.self, Install.self, Doctor.self, Log.self]
+        subcommands: [List.self, Capture.self, Serve.self, Daemon.self, Install.self, Doctor.self, Log.self]
     )
 }

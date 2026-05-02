@@ -18,7 +18,8 @@ struct MCPServer {
         }
     }
 
-    private func handle(request: [String: Any]) async -> [String: Any]? {
+    /// Public so non-stdio transports (Unix socket daemon) can reuse it.
+    func handle(request: [String: Any]) async -> [String: Any]? {
         guard let method = request["method"] as? String else { return nil }
         let id = request["id"]
         let params = (request["params"] as? [String: Any]) ?? [:]
