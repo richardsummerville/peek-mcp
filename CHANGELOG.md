@@ -5,6 +5,13 @@ All notable changes to peek are tracked here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.4.4] — 2026-05-02
+
+### Fixed
+- CLI `--version` was stuck at 0.4.2 in v0.4.3 (Peek.swift's
+  CommandConfiguration version wasn't bumped alongside Server.swift's
+  serverVersion). Both now report 0.4.4.
+
 ## [0.4.3] — 2026-05-02
 
 ### Added
