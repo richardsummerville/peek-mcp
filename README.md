@@ -127,11 +127,38 @@ Restart your host. Tools advertised:
 | `capture_display` | `display_id?: int`, `hide_cursor?`, `format?`                     | inline image     |
 | `capture_region`  | `x, y, width, height: int`, `display_id?`, `hide_cursor?`, `format?` | inline image     |
 
-Capture tools default to **JPEG @ q=0.7, capped at 1024 px** on the
-longest side — sub-200 KB responses, fast round-trips, well above the
-vision-pipeline discrimination threshold. Pass `format: "png"` for
-lossless. The `force` boolean (window captures only) bypasses the
-deny-list.
+Capture tools default to the **balanced** preset (JPEG q=0.7, 1024 px
+cap) — sub-200 KB responses, fast round-trips, well above the
+vision-pipeline discrimination threshold. Per-call `format: "png"` or
+`format: "jpeg"` overrides. The `force` boolean (window captures only)
+bypasses the deny-list.
+
+### Changing the default
+
+Set `PEEK_QUALITY` in your environment to swap presets:
+
+| Preset      | Format    | Cap    | Typical size |
+|-------------|-----------|--------|--------------|
+| `fast`      | JPEG q=0.5| 768 px | ~80 KB       |
+| `balanced`  | JPEG q=0.7| 1024 px| ~150 KB      |
+| `lossless`  | PNG       | 2048 px| ~1 MB        |
+
+Per shell session: `export PEEK_QUALITY=lossless` in `~/.zshrc`.
+
+Per MCP host: add `env` to the host's mcpServers entry. Example for
+Claude Desktop:
+
+```json
+"mcpServers": {
+  "peek": {
+    "command": "/opt/homebrew/bin/peek",
+    "args": ["serve"],
+    "env": { "PEEK_QUALITY": "lossless" }
+  }
+}
+```
+
+`peek doctor` shows the current preset.
 
 For other hosts (Cursor, etc.) add manually:
 

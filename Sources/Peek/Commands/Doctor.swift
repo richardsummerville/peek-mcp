@@ -16,6 +16,7 @@ struct Doctor: AsyncParsableCommand {
         print(line)
         print("Binary:  \(Bundle.main.executablePath ?? "?")")
         print("macOS:   \(ProcessInfo.processInfo.operatingSystemVersionString)")
+        print("Quality: \(QualityPreset.current.summary)")
         print()
 
         let permitted = await checkScreenRecordingPermission()

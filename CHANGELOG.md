@@ -5,6 +5,16 @@ All notable changes to peek are tracked here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.4.1] — 2026-05-02
+
+### Added
+- `PEEK_QUALITY` env var with three presets: `fast` (JPEG q=0.5,
+  768 px), `balanced` (JPEG q=0.7, 1024 px — default), `lossless`
+  (PNG, 2048 px). Drives the MCP capture default; per-call `format`
+  parameter still wins. `peek doctor` reports the active preset.
+- README documents how to set the env in `~/.zshrc` (per shell) or in
+  the MCP host's `env` field (per host).
+
 ## [0.4.0] — 2026-05-02
 
 ### Added

@@ -57,11 +57,11 @@ enum CaptureError: LocalizedError {
 
 enum ScreenCapture {
     /// Output dimensions are capped at this on the longest side.
-    /// Claude's vision pipeline downsamples anything larger before
-    /// processing, so shipping more pixels just wastes encode +
-    /// transport + model time. 1024 reads UI text fine and keeps
-    /// responses small enough to round-trip in a few seconds.
-    static let maxOutputDimension: Double = 1024
+    /// Claude's vision pipeline downsamples larger images before
+    /// processing, so shipping more pixels wastes encode + transport
+    /// + model time. Driven by `PEEK_QUALITY` env var via
+    /// `QualityPreset.current.maxOutputDimension`.
+    static var maxOutputDimension: Double { QualityPreset.current.maxOutputDimension }
 
     /// Scale factor to apply to a native (width, height) so the longer
     /// side is at most `maxOutputDimension`. Returns 1.0 if already fits.

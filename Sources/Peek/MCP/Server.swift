@@ -3,7 +3,7 @@ import Foundation
 struct MCPServer {
     private let protocolVersion = "2025-06-18"
     private let serverName = "peek-mcp"
-    private let serverVersion = "0.4.0"
+    private let serverVersion = "0.4.1"
 
     func run() async {
         log("peek-mcp listening on stdio")
@@ -189,17 +189,17 @@ struct MCPServer {
         ]
     }
 
-    /// MCP default is JPEG @ 0.7 — small, fast, well above the model's
-    /// vision-pipeline discrimination threshold. CLI default is PNG.
-    /// Pass `format: "png"` (lossless) or `format: "jpeg"` to override.
+    /// MCP default comes from `QualityPreset.current` (env-driven via
+    /// `PEEK_QUALITY=fast|balanced|lossless`, default `balanced`).
+    /// Per-call `format: "png"` or `format: "jpeg"` overrides the preset.
     private func parseFormat(_ raw: Any?) -> ScreenCapture.OutputFormat {
         guard let s = (raw as? String)?.lowercased() else {
-            return .jpeg(quality: 0.7)
+            return QualityPreset.current.format
         }
         switch s {
         case "png": return .png
         case "jpeg", "jpg": return .jpeg(quality: 0.7)
-        default: return .jpeg(quality: 0.7)
+        default: return QualityPreset.current.format
         }
     }
 
