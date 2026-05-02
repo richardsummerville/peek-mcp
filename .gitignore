@@ -4,3 +4,6 @@
 DerivedData/
 .DS_Store
 Package.resolved
+
+# Local-only notes (PLAN.md, scratch, etc.)
+private/

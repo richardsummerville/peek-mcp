@@ -139,7 +139,7 @@ struct MCPServer {
                     "type": "object",
                     "properties": [
                         "window_id": ["type": "integer", "description": "Window ID from list_windows."],
-                        "app_name": ["type": "string", "description": "App name (case-insensitive substring), e.g. \"SocialPrep\" or \"Safari\"."],
+                        "app_name": ["type": "string", "description": "App name (case-insensitive substring), e.g. \"Safari\" or \"Xcode\"."],
                         "hide_cursor": ["type": "boolean", "description": "Default true."],
                         "force": ["type": "boolean", "description": "Bypass the deny-list. Default false."]
                     ]
