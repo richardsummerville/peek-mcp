@@ -15,7 +15,7 @@ enum QualityPreset: String, Sendable {
     static let current: QualityPreset = {
         guard let raw = ProcessInfo.processInfo.environment["PEEK_QUALITY"]?.lowercased(),
               let preset = QualityPreset(rawValue: raw) else {
-            return .balanced
+            return .lossless
         }
         return preset
     }()
@@ -42,8 +42,8 @@ enum QualityPreset: String, Sendable {
     var summary: String {
         switch self {
         case .fast:     return "fast — JPEG q=0.5, 768 px cap"
-        case .balanced: return "balanced — JPEG q=0.7, 1024 px cap (default)"
-        case .lossless: return "lossless — PNG, 2048 px cap"
+        case .balanced: return "balanced — JPEG q=0.7, 1024 px cap"
+        case .lossless: return "lossless — PNG, 2048 px cap (default)"
         }
     }
 }

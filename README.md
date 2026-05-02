@@ -127,10 +127,11 @@ Restart your host. Tools advertised:
 | `capture_display` | `display_id?: int`, `hide_cursor?`, `format?`                     | inline image     |
 | `capture_region`  | `x, y, width, height: int`, `display_id?`, `hide_cursor?`, `format?` | inline image     |
 
-Capture tools default to the **balanced** preset (JPEG q=0.7, 1024 px
-cap) — sub-200 KB responses, fast round-trips, well above the
-vision-pipeline discrimination threshold. Per-call `format: "png"` or
-`format: "jpeg"` overrides. The `force` boolean (window captures only)
+Capture tools default to the **lossless** preset (PNG, 2048 px cap) —
+sharp UI, no JPEG artifacts on text. Larger responses + slower
+round-trips than JPEG; if you'd rather optimise for speed, swap the
+preset (see below). Per-call `format: "png"` or `format: "jpeg"`
+overrides everything. The `force` boolean (window captures only)
 bypasses the deny-list.
 
 ### Changing the default
@@ -141,7 +142,7 @@ Set `PEEK_QUALITY` in your environment to swap presets:
 |-------------|-----------|--------|--------------|
 | `fast`      | JPEG q=0.5| 768 px | ~80 KB       |
 | `balanced`  | JPEG q=0.7| 1024 px| ~150 KB      |
-| `lossless`  | PNG       | 2048 px| ~1 MB        |
+| `lossless`  | PNG       | 2048 px| ~1 MB (default) |
 
 Per shell session: `export PEEK_QUALITY=lossless` in `~/.zshrc`.
 

@@ -5,6 +5,16 @@ All notable changes to peek are tracked here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.4.2] — 2026-05-02
+
+### Changed
+- **Default `PEEK_QUALITY` flipped from `balanced` to `lossless`.**
+  JPEG q=0.7 at 1024 px (the previous default) introduced visible
+  blur on UI text. PNG at 2048 px is the right baseline for visual
+  debugging. Switch back with `PEEK_QUALITY=balanced` (JPEG q=0.7,
+  1024 px) or `PEEK_QUALITY=fast` (JPEG q=0.5, 768 px) for smaller
+  responses + faster round-trips.
+
 ## [0.4.1] — 2026-05-02
 
 ### Added
