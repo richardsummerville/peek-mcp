@@ -56,11 +56,12 @@ enum CaptureError: LocalizedError {
 }
 
 enum ScreenCapture {
-    /// Output dimensions are capped at this on the longest side. Claude's
-    /// vision pipeline downsamples anything larger before processing, so
-    /// shipping more pixels just wastes encode + transport + model time.
-    /// 1568 matches Anthropic's documented effective max input dimension.
-    static let maxOutputDimension: Double = 1568
+    /// Output dimensions are capped at this on the longest side.
+    /// Claude's vision pipeline downsamples anything larger before
+    /// processing, so shipping more pixels just wastes encode +
+    /// transport + model time. 1024 reads UI text fine and keeps
+    /// responses small enough to round-trip in a few seconds.
+    static let maxOutputDimension: Double = 1024
 
     /// Scale factor to apply to a native (width, height) so the longer
     /// side is at most `maxOutputDimension`. Returns 1.0 if already fits.

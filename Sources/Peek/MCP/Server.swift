@@ -189,17 +189,17 @@ struct MCPServer {
         ]
     }
 
-    /// MCP default is JPEG @ 0.85 — small, fast, well above the model's
+    /// MCP default is JPEG @ 0.7 — small, fast, well above the model's
     /// vision-pipeline discrimination threshold. CLI default is PNG.
     /// Pass `format: "png"` (lossless) or `format: "jpeg"` to override.
     private func parseFormat(_ raw: Any?) -> ScreenCapture.OutputFormat {
         guard let s = (raw as? String)?.lowercased() else {
-            return .jpeg(quality: 0.85)
+            return .jpeg(quality: 0.7)
         }
         switch s {
         case "png": return .png
-        case "jpeg", "jpg": return .jpeg(quality: 0.85)
-        default: return .jpeg(quality: 0.85)
+        case "jpeg", "jpg": return .jpeg(quality: 0.7)
+        default: return .jpeg(quality: 0.7)
         }
     }
 
