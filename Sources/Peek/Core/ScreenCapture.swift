@@ -56,6 +56,19 @@ enum CaptureError: LocalizedError {
 }
 
 enum ScreenCapture {
+    /// Output dimensions are capped at this on the longest side. Claude's
+    /// vision pipeline downsamples anything larger before processing, so
+    /// shipping more pixels just wastes encode + transport + model time.
+    /// 1568 matches Anthropic's documented effective max input dimension.
+    static let maxOutputDimension: Double = 1568
+
+    /// Scale factor to apply to a native (width, height) so the longer
+    /// side is at most `maxOutputDimension`. Returns 1.0 if already fits.
+    private static func capScale(width: Double, height: Double) -> Double {
+        let longest = max(width, height)
+        return longest <= maxOutputDimension ? 1.0 : maxOutputDimension / longest
+    }
+
     /// Bootstraps the AppKit/CoreGraphics connection to the WindowServer.
     /// Required for SCScreenshotManager.captureImage when running as a
     /// pure CLI binary — without this, captures abort with
@@ -138,20 +151,22 @@ enum ScreenCapture {
         byApp appName: String,
         hideCursor: Bool = true,
         caller: Caller,
-        force: Bool = false
-    ) async throws -> Data {
+        force: Bool = false,
+        format: OutputFormat = .png
+    ) async throws -> (data: Data, mimeType: String) {
         guard let window = try await findWindow(byApp: appName) else {
             throw CaptureError.windowNotFoundByApp(appName)
         }
-        return try await captureWindow(id: window.id, hideCursor: hideCursor, caller: caller, force: force)
+        return try await captureWindow(id: window.id, hideCursor: hideCursor, caller: caller, force: force, format: format)
     }
 
     static func captureWindow(
         id: UInt32,
         hideCursor: Bool = true,
         caller: Caller,
-        force: Bool = false
-    ) async throws -> Data {
+        force: Bool = false,
+        format: OutputFormat = .png
+    ) async throws -> (data: Data, mimeType: String) {
         await bootstrap()
         let content = try await SCShareableContent.excludingDesktopWindows(
             false,
@@ -180,9 +195,12 @@ enum ScreenCapture {
         }
         let filter = SCContentFilter(desktopIndependentWindow: window)
         let scale = scaleForWindow(window) ?? 2.0
+        let nativeW = Double(window.frame.width) * Double(scale)
+        let nativeH = Double(window.frame.height) * Double(scale)
+        let cap = capScale(width: nativeW, height: nativeH)
         let cfg = SCStreamConfiguration()
-        cfg.width = Int(window.frame.width * scale)
-        cfg.height = Int(window.frame.height * scale)
+        cfg.width = Int(nativeW * cap)
+        cfg.height = Int(nativeH * cap)
         cfg.showsCursor = !hideCursor
         cfg.capturesShadowsOnly = false
         cfg.ignoreShadowsDisplay = true
@@ -191,17 +209,22 @@ enum ScreenCapture {
             contentFilter: filter,
             configuration: cfg
         )
-        let data = try pngData(from: image)
+        let encoded = try encode(image, as: format)
         AuditLog.record(AuditEntry(
-            kind: "capture_window", caller: caller, app: info.app, windowId: id, bytes: data.count
+            kind: "capture_window", caller: caller, app: info.app, windowId: id, bytes: encoded.data.count
         ))
         MenuBarController.record(CaptureRecord(
-            ts: Date(), kind: "capture_window", app: info.app, bytes: data.count, denied: false
+            ts: Date(), kind: "capture_window", app: info.app, bytes: encoded.data.count, denied: false
         ))
-        return data
+        return encoded
     }
 
-    static func captureDisplay(id: UInt32?, hideCursor: Bool = true, caller: Caller) async throws -> Data {
+    static func captureDisplay(
+        id: UInt32?,
+        hideCursor: Bool = true,
+        caller: Caller,
+        format: OutputFormat = .png
+    ) async throws -> (data: Data, mimeType: String) {
         await bootstrap()
         let content = try await SCShareableContent.current
         guard !content.displays.isEmpty else { throw CaptureError.noDisplays }
@@ -215,22 +238,25 @@ enum ScreenCapture {
             display = content.displays.first!
         }
         let filter = SCContentFilter(display: display, excludingWindows: [])
+        let nativeW = Double(display.width)
+        let nativeH = Double(display.height)
+        let cap = capScale(width: nativeW, height: nativeH)
         let cfg = SCStreamConfiguration()
-        cfg.width = display.width
-        cfg.height = display.height
+        cfg.width = Int(nativeW * cap)
+        cfg.height = Int(nativeH * cap)
         cfg.showsCursor = !hideCursor
         let image = try await SCScreenshotManager.captureImage(
             contentFilter: filter,
             configuration: cfg
         )
-        let data = try pngData(from: image)
+        let encoded = try encode(image, as: format)
         AuditLog.record(AuditEntry(
-            kind: "capture_display", caller: caller, displayId: display.displayID, bytes: data.count
+            kind: "capture_display", caller: caller, displayId: display.displayID, bytes: encoded.data.count
         ))
         MenuBarController.record(CaptureRecord(
-            ts: Date(), kind: "capture_display", app: nil, bytes: data.count, denied: false
+            ts: Date(), kind: "capture_display", app: nil, bytes: encoded.data.count, denied: false
         ))
-        return data
+        return encoded
     }
 
     static func captureRegion(
@@ -240,8 +266,9 @@ enum ScreenCapture {
         height: Int,
         displayID: UInt32? = nil,
         hideCursor: Bool = true,
-        caller: Caller
-    ) async throws -> Data {
+        caller: Caller,
+        format: OutputFormat = .png
+    ) async throws -> (data: Data, mimeType: String) {
         await bootstrap()
         guard width > 0, height > 0 else { throw CaptureError.invalidRegion }
         let content = try await SCShareableContent.current
@@ -257,35 +284,63 @@ enum ScreenCapture {
         }
         let scale = scaleFactor(for: display.displayID)
         let filter = SCContentFilter(display: display, excludingWindows: [])
+        let nativeW = Double(width) * Double(scale)
+        let nativeH = Double(height) * Double(scale)
+        let cap = capScale(width: nativeW, height: nativeH)
         let cfg = SCStreamConfiguration()
         cfg.sourceRect = CGRect(x: x, y: y, width: width, height: height)
-        cfg.width = Int(Double(width) * scale)
-        cfg.height = Int(Double(height) * scale)
+        cfg.width = Int(nativeW * cap)
+        cfg.height = Int(nativeH * cap)
         cfg.showsCursor = !hideCursor
         let image = try await SCScreenshotManager.captureImage(
             contentFilter: filter,
             configuration: cfg
         )
-        let data = try pngData(from: image)
+        let encoded = try encode(image, as: format)
         AuditLog.record(AuditEntry(
             kind: "capture_region",
             caller: caller,
             displayId: display.displayID,
             region: Bounds(CGRect(x: x, y: y, width: width, height: height)),
-            bytes: data.count
+            bytes: encoded.data.count
         ))
         MenuBarController.record(CaptureRecord(
-            ts: Date(), kind: "capture_region", app: nil, bytes: data.count, denied: false
+            ts: Date(), kind: "capture_region", app: nil, bytes: encoded.data.count, denied: false
         ))
-        return data
+        return encoded
     }
 
-    private static func pngData(from cgImage: CGImage) throws -> Data {
+    /// Output format. PNG is lossless (good for CLI saves to disk).
+    /// JPEG is ~5-10x smaller and is the right default for MCP captures
+    /// where the consumer is the model, which downsamples and tokenizes
+    /// well below JPEG's discrimination threshold.
+    enum OutputFormat {
+        case png
+        case jpeg(quality: Double)  // 0.0–1.0
+    }
+
+    static func encode(_ cgImage: CGImage, as format: OutputFormat) throws -> (data: Data, mimeType: String) {
         let rep = NSBitmapImageRep(cgImage: cgImage)
-        guard let data = rep.representation(using: .png, properties: [:]) else {
-            throw CaptureError.encodingFailed
+        switch format {
+        case .png:
+            guard let data = rep.representation(using: .png, properties: [:]) else {
+                throw CaptureError.encodingFailed
+            }
+            return (data, "image/png")
+        case .jpeg(let quality):
+            let props: [NSBitmapImageRep.PropertyKey: Any] = [
+                .compressionFactor: max(0.0, min(1.0, quality))
+            ]
+            guard let data = rep.representation(using: .jpeg, properties: props) else {
+                throw CaptureError.encodingFailed
+            }
+            return (data, "image/jpeg")
         }
-        return data
+    }
+
+    /// Backward-compat shim — always PNG. New call sites should use `encode(_:as:)`.
+    private static func pngData(from cgImage: CGImage) throws -> Data {
+        try encode(cgImage, as: .png).data
     }
 
     private static func scaleFactor(for displayID: CGDirectDisplayID) -> CGFloat {

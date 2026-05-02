@@ -39,17 +39,17 @@ struct Capture: AsyncParsableCommand {
         }
 
         func run() async throws {
-            let png: Data
+            let result: (data: Data, mimeType: String)
             if let wid = windowID {
-                png = try await ScreenCapture.captureWindow(
+                result = try await ScreenCapture.captureWindow(
                     id: wid, hideCursor: common.hideCursor, caller: .cli, force: force
                 )
             } else {
-                png = try await ScreenCapture.captureWindow(
+                result = try await ScreenCapture.captureWindow(
                     byApp: app!, hideCursor: common.hideCursor, caller: .cli, force: force
                 )
             }
-            try writeOutput(png, path: common.output)
+            try writeOutput(result.data, path: common.output)
         }
     }
 
@@ -65,10 +65,10 @@ struct Capture: AsyncParsableCommand {
         @OptionGroup var common: CommonOptions
 
         func run() async throws {
-            let png = try await ScreenCapture.captureDisplay(
+            let result = try await ScreenCapture.captureDisplay(
                 id: displayID, hideCursor: common.hideCursor, caller: .cli
             )
-            try writeOutput(png, path: common.output)
+            try writeOutput(result.data, path: common.output)
         }
     }
 
@@ -89,13 +89,13 @@ struct Capture: AsyncParsableCommand {
         @OptionGroup var common: CommonOptions
 
         func run() async throws {
-            let png = try await ScreenCapture.captureRegion(
+            let result = try await ScreenCapture.captureRegion(
                 x: x, y: y, width: width, height: height,
                 displayID: displayID,
                 hideCursor: common.hideCursor,
                 caller: .cli
             )
-            try writeOutput(png, path: common.output)
+            try writeOutput(result.data, path: common.output)
         }
     }
 }

@@ -64,19 +64,20 @@ struct MCPServer {
             case "capture_window":
                 let hideCursor = (args["hide_cursor"] as? Bool) ?? true
                 let force = (args["force"] as? Bool) ?? false
+                let format = parseFormat(args["format"])
                 let wid: UInt32? = (args["window_id"] as? Int).map(UInt32.init)
                     ?? (args["window_id"] as? NSNumber)?.uint32Value
                 if let wid = wid {
-                    let png = try await ScreenCapture.captureWindow(
-                        id: wid, hideCursor: hideCursor, caller: .mcp, force: force
+                    let result = try await ScreenCapture.captureWindow(
+                        id: wid, hideCursor: hideCursor, caller: .mcp, force: force, format: format
                     )
-                    return success(id: id, result: imageResult(png))
+                    return success(id: id, result: imageResult(result.data, mimeType: result.mimeType))
                 }
                 if let appName = args["app_name"] as? String, !appName.isEmpty {
-                    let png = try await ScreenCapture.captureWindow(
-                        byApp: appName, hideCursor: hideCursor, caller: .mcp, force: force
+                    let result = try await ScreenCapture.captureWindow(
+                        byApp: appName, hideCursor: hideCursor, caller: .mcp, force: force, format: format
                     )
-                    return success(id: id, result: imageResult(png))
+                    return success(id: id, result: imageResult(result.data, mimeType: result.mimeType))
                 }
                 return error(id: id, code: -32602, message: "capture_window requires window_id or app_name")
 
@@ -84,10 +85,11 @@ struct MCPServer {
                 let did: UInt32? = (args["display_id"] as? Int).map(UInt32.init)
                     ?? (args["display_id"] as? NSNumber)?.uint32Value
                 let hideCursor = (args["hide_cursor"] as? Bool) ?? true
-                let png = try await ScreenCapture.captureDisplay(
-                    id: did, hideCursor: hideCursor, caller: .mcp
+                let format = parseFormat(args["format"])
+                let result = try await ScreenCapture.captureDisplay(
+                    id: did, hideCursor: hideCursor, caller: .mcp, format: format
                 )
-                return success(id: id, result: imageResult(png))
+                return success(id: id, result: imageResult(result.data, mimeType: result.mimeType))
 
             case "capture_region":
                 guard let x = args["x"] as? Int, let y = args["y"] as? Int,
@@ -96,11 +98,12 @@ struct MCPServer {
                 }
                 let did: UInt32? = (args["display_id"] as? Int).map(UInt32.init)
                 let hideCursor = (args["hide_cursor"] as? Bool) ?? true
-                let png = try await ScreenCapture.captureRegion(
+                let format = parseFormat(args["format"])
+                let result = try await ScreenCapture.captureRegion(
                     x: x, y: y, width: w, height: h,
-                    displayID: did, hideCursor: hideCursor, caller: .mcp
+                    displayID: did, hideCursor: hideCursor, caller: .mcp, format: format
                 )
-                return success(id: id, result: imageResult(png))
+                return success(id: id, result: imageResult(result.data, mimeType: result.mimeType))
 
             default:
                 return error(id: id, code: -32602, message: "Unknown tool: \(name)")
@@ -176,14 +179,28 @@ struct MCPServer {
         ]
     }
 
-    private func imageResult(_ png: Data) -> [String: Any] {
+    private func imageResult(_ data: Data, mimeType: String) -> [String: Any] {
         [
             "content": [[
                 "type": "image",
-                "data": png.base64EncodedString(),
-                "mimeType": "image/png"
+                "data": data.base64EncodedString(),
+                "mimeType": mimeType
             ]]
         ]
+    }
+
+    /// MCP default is JPEG @ 0.85 — small, fast, well above the model's
+    /// vision-pipeline discrimination threshold. CLI default is PNG.
+    /// Pass `format: "png"` (lossless) or `format: "jpeg"` to override.
+    private func parseFormat(_ raw: Any?) -> ScreenCapture.OutputFormat {
+        guard let s = (raw as? String)?.lowercased() else {
+            return .jpeg(quality: 0.85)
+        }
+        switch s {
+        case "png": return .png
+        case "jpeg", "jpg": return .jpeg(quality: 0.85)
+        default: return .jpeg(quality: 0.85)
+        }
     }
 
     private func textResult(_ text: String) -> [String: Any] {
