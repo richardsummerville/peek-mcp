@@ -63,6 +63,14 @@ doesn't apply retroactively to running processes).
 You'll know it's working when `peek doctor` shows
 `[ok] Screen Recording permission: granted`.
 
+> **Brew quirk.** macOS marks Homebrew-installed binaries with a
+> `com.apple.provenance` xattr that TCC may treat as a distinct app
+> needing its own Screen Recording entry — even when the host
+> (Claude.app) already has the grant. If granting just the host
+> doesn't work, also add `/opt/homebrew/bin/peek` to the Screen
+> Recording list (`+` button, Cmd+Shift+G, paste the path). `peek
+> doctor` detects this case and prints the exact steps.
+
 ### First capture
 
 From Terminal, sanity-check that the binary works:

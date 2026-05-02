@@ -5,6 +5,17 @@ All notable changes to peek are tracked here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.4.3] — 2026-05-02
+
+### Added
+- `peek doctor` detects when peek is running from a Homebrew-installed
+  location and surfaces specific TCC instructions: brew-installed
+  binaries carry a `com.apple.provenance` xattr that can cause macOS
+  to treat peek as a distinct app needing its own Screen Recording
+  grant, even when the host app (Claude.app) already has it. The
+  doctor now prints the exact steps to add peek to the allowlist.
+- README documents the same brew TCC quirk.
+
 ## [0.4.2] — 2026-05-02
 
 ### Changed
