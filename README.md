@@ -85,21 +85,30 @@ screenshot inline.
 
 ## CLI
 
+The most common forms are short:
+
 ```bash
-peek list windows                       # JSON: id, title, app, bundleID, bounds, layer
-peek list windows --app Safari          # filter by app name substring
+peek windows                            # list visible windows (JSON)
+peek displays                           # list attached displays (JSON)
+
+peek window Safari -o shot.png          # capture frontmost Safari window
+peek window 1Password --force           # bypass deny-list
+
+peek display -o screen.png              # capture primary display
+peek display --id 4 -o ext.png          # specific display
+```
+
+The verbose forms still work and expose more knobs:
+
+```bash
+peek list windows --app Safari          # filter list by app substring
 peek list windows --include-offscreen   # include minimized
 
-peek list displays                      # JSON: id, widthPx, heightPx, frame, scale
-
-peek capture window --app Safari -o shot.png    # frontmost matching window
-peek capture window --id 12345 -o shot.png      # exact window
+peek capture window --app Safari -o shot.png
+peek capture window --id 12345 -o shot.png      # by exact window id
 peek capture window --app Safari > shot.png     # PNG bytes to stdout
-peek capture window --app 1Password --force     # bypass deny-list
 
-peek capture display -o screen.png              # primary display
-peek capture display --id 4 -o ext.png          # specific display
-
+peek capture display -o screen.png
 peek capture region -x 100 -y 100 -w 800 -h 600 -o region.png
 
 peek install                            # wire into MCP hosts

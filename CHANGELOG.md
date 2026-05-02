@@ -5,6 +5,17 @@ All notable changes to peek are tracked here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.4.5] — 2026-05-02
+
+### Added
+- Top-level shortcut subcommands so the most common forms read
+  naturally:
+  - `peek windows` → `peek list windows`
+  - `peek displays` → `peek list displays`
+  - `peek window Safari` → `peek capture window --app Safari`
+  - `peek display` → `peek capture display`
+- The verbose forms still work; shortcuts appear first in `--help`.
+
 ## [0.4.4] — 2026-05-02
 
 ### Fixed
