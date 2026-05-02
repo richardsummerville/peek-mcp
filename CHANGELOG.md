@@ -5,6 +5,50 @@ All notable changes to peek are tracked here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] — 2026-05-02
+
+### Added
+- **Daemon + shim architecture.** `peek serve` is now a thin stdio
+  shim (the binary MCP hosts launch); a single `peek daemon` process
+  owns SCK, the menu bar, and the audit log. Multiple Claude
+  hosts/sessions = N shims + 1 daemon, instead of N full instances
+  each with their own SCK init and ~10 MB resident.
+- **Menu-bar indicator** (`NSStatusItem` eye icon) showing last
+  capture, recent history (5 most recent), audit log shortcut,
+  Screen Recording settings shortcut, and a red **"Kill peek"**
+  switch (Cmd-K) that terminates the daemon immediately.
+- **Singleton menu-bar lock** for `--standalone` mode so multiple
+  in-process instances don't stack icons.
+- **JPEG output** as MCP default. CLI defaults to PNG (lossless for
+  on-disk saves). MCP `capture_*` tools accept `format: "png"` to
+  force lossless.
+- `peek daemon` subcommand for running the daemon manually
+  (debugging, or as a future LaunchAgent target).
+- `peek serve --standalone` / `--no-menu-bar` flags for the legacy
+  in-process mode.
+
+### Changed
+- Default capture output dimensions capped at **1024 px** longest
+  side (was uncapped / native retina). Anthropic's vision pipeline
+  downsamples larger images anyway; smaller responses round-trip
+  3-5× faster.
+- Default JPEG quality 0.7. UI text remains readable; vision-model
+  discrimination is unaffected.
+- MCP `serverVersion` reports `0.4.0`.
+
+### Fixed
+- **Capture deadlock when called from inside `NSApp.run` event loop.**
+  `MainActor.run { _ = NSApplication.shared }` (used to bootstrap the
+  WindowServer/CoreGraphics connection) didn't reliably resolve
+  inside the AppKit run loop. Daemon startup now pre-bootstraps NSApp
+  and marks the bootstrap done so per-capture calls skip the hop;
+  remaining cases hop via `DispatchQueue.main.async` (which AppKit
+  reliably pumps).
+- **Shim dropping responses on stdin EOF.** Was calling
+  `shutdown(SHUT_RDWR)` on the daemon socket the moment the host
+  closed stdin, racing with the daemon's response writes. Changed
+  to `SHUT_WR` (half-close) so queued responses still flow back.
+
 ## [0.3.0] — 2026-05-02
 
 ### Added

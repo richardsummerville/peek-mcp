@@ -3,7 +3,7 @@ import Foundation
 struct MCPServer {
     private let protocolVersion = "2025-06-18"
     private let serverName = "peek-mcp"
-    private let serverVersion = "0.3.0"
+    private let serverVersion = "0.4.0"
 
     func run() async {
         log("peek-mcp listening on stdio")
