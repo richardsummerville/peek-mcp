@@ -98,6 +98,7 @@ struct Serve: ParsableCommand {
 
         DispatchQueue.main.async {
             NSApplication.shared.setActivationPolicy(.accessory)
+            ScreenCapture.markBootstrapped()
             if showMenuBar, MenuBarLock.tryAcquire() {
                 MenuBarController.shared.install()
             }

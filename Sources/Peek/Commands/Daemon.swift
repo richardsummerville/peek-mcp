@@ -43,6 +43,7 @@ struct Daemon: ParsableCommand {
 
         DispatchQueue.main.async {
             NSApplication.shared.setActivationPolicy(.accessory)
+            ScreenCapture.markBootstrapped()  // daemon owns NSApp; skip per-call hop
             if showMenuBar {
                 MenuBarController.shared.install()
             }

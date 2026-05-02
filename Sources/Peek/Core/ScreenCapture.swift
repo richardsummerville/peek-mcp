@@ -59,11 +59,36 @@ enum ScreenCapture {
     /// Bootstraps the AppKit/CoreGraphics connection to the WindowServer.
     /// Required for SCScreenshotManager.captureImage when running as a
     /// pure CLI binary — without this, captures abort with
-    /// `CGS_REQUIRE_INIT` (CGInitialization.c). NSApplication.shared is
-    /// MainActor-isolated, so we hop briefly. The shared singleton is
-    /// cached after first access; subsequent calls are effectively free.
+    /// `CGS_REQUIRE_INIT` (CGInitialization.c).
+    ///
+    /// Daemon mode initializes NSApp during startup and calls
+    /// `markBootstrapped()` so the per-capture path can skip the hop
+    /// entirely. CLI mode does the hop on first capture.
+    ///
+    /// Hop uses DispatchQueue.main.async (which AppKit's NSApp.run
+    /// loop reliably pumps) rather than MainActor.run (which can
+    /// deadlock inside the AppKit event loop).
+    nonisolated(unsafe) private static var bootstrapped = false
+
+    static func markBootstrapped() {
+        bootstrapped = true
+    }
+
     private static func bootstrap() async {
-        await MainActor.run { _ = NSApplication.shared }
+        if bootstrapped { return }
+        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+            if Thread.isMainThread {
+                _ = NSApplication.shared
+                bootstrapped = true
+                cont.resume()
+            } else {
+                DispatchQueue.main.async {
+                    _ = NSApplication.shared
+                    Self.bootstrapped = true
+                    cont.resume()
+                }
+            }
+        }
     }
 
     static func listWindows(includeOffscreen: Bool = false) async throws -> [WindowInfo] {
