@@ -25,7 +25,9 @@ struct Serve: ParsableCommand {
         // block here until it returns.
         DispatchQueue.main.async {
             NSApplication.shared.setActivationPolicy(.accessory)
-            if showMenuBar {
+            // Only one peek serve at a time installs a menu-bar item.
+            // Other instances run headless (still serve MCP normally).
+            if showMenuBar, MenuBarLock.tryAcquire() {
                 MenuBarController.shared.install()
             }
 
