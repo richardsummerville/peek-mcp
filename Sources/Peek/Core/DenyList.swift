@@ -22,10 +22,12 @@ struct DenyList: Codable {
             "com.1password.",
             "com.agilebits.onepassword",
             "com.apple.keychainaccess",
+            "com.apple.Passwords",
         ],
         appNamePatterns: [
             "1Password",
             "Keychain Access",
+            "Passwords",
         ]
     )
 
